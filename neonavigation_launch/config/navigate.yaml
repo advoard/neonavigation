@@ -37,15 +37,15 @@ planner_3d:
 spur:
   hz: 30.0
   k_dist: 16.0
-  k_ang: 10.0
+  k_ang: 16.0
   k_avel: 4.0
-  dist_lim: 0.5
-  goal_tolerance_dist: 0.05
+  dist_lim: 0.1
+  goal_tolerance_dist: 0.04
   goal_tolerance_ang: 0.05
-  stop_tolerance_dist: 0.04
-  stop_tolerance_ang: 0.04
+  stop_tolerance_dist: 0.03
+  stop_tolerance_ang: 0.03
   no_position_control_dist: 0.05
   limit_vel_by_avel: true
   path_step: 1
-  look_forward: 0.0
-  curv_forward: 0.5
+  look_forward: 0.01
+  curv_forward: 0.01

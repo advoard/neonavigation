@@ -1,50 +1,10 @@
-/*
- * Copyright (c) 2014, ATR, Atsushi Watanabe
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *
- *     * Redistributions of source code must retain the above copyright
- *       notice, this list of conditions and the following disclaimer.
- *     * Redistributions in binary form must reproduce the above copyright
- *       notice, this list of conditions and the following disclaimer in the
- *       documentation and/or other materials provided with the distribution.
- *     * Neither the name of the copyright holder nor the names of its
- *       contributors may be used to endorse or promote products derived from
- *       this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- */
-
-/*
-   * This research was supported by a contract with the Ministry of Internal
-   Affairs and Communications entitled, 'Novel and innovative R&D making use
-   of brain structures'
-
-   This software was implemented to accomplish the above research.
-   Original idea of the implemented control scheme was published on:
-   S. Iida, S. Yuta, "Vehicle command system and trajectory control for
-   autonomous mobile robots," in Proceedings of the 1991 IEEE/RSJ
-   International Workshop on Intelligent Robots and Systems (IROS),
-   1991, pp. 212-217.
- */
 
 #include <algorithm>
 #include <cmath>
 #include <limits>
 #include <string>
 #include <vector>
+#include <iostream>
 
 #include <Eigen/Core>
 #include <Eigen/Geometry>
@@ -58,6 +18,8 @@
 #include <nav_msgs/Path.h>
 #include <std_msgs/Float32.h>
 #include <std_msgs/Header.h>
+#include <std_msgs/String.h>
+
 
 #include <tf2/utils.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
@@ -125,6 +87,9 @@ private:
   ros::Subscriber sub_odom_;
   ros::Publisher pub_vel_;
   ros::Publisher pub_status_;
+
+  ros::Publisher pub_status_overwrite;
+
   ros::Publisher pub_tracking_;
   ros::NodeHandle nh_;
   ros::NodeHandle pnh_;
@@ -199,17 +164,17 @@ TrackerNode::TrackerNode()
   neonavigation_common::compat::checkCompatMode();
   pnh_.param("frame_robot", frame_robot_, std::string("base_link"));
   pnh_.param("frame_odom", frame_odom_, std::string("odom"));
-  neonavigation_common::compat::deprecatedParam(pnh_, "path", topic_path_, std::string("path"));
+  neonavigation_common::compat::deprecatedParam(pnh_, "spline_path", topic_path_, std::string("spline_path"));
   neonavigation_common::compat::deprecatedParam(pnh_, "cmd_vel", topic_cmd_vel_, std::string("cmd_vel"));
   pnh_.param("hz", hz_, 50.0);
-  pnh_.param("use_odom", use_odom_, false);
-  pnh_.param("predict_odom", predict_odom_, true);
+  pnh_.param("use_odom", use_odom_, true);
+  pnh_.param("predict_odom", predict_odom_, false);
   pnh_.param("max_dt", max_dt_, 0.1);
   pnh_.param("odom_timeout_sec", odom_timeout_sec_, 0.1);
 
   sub_path_ = neonavigation_common::compat::subscribe<nav_msgs::Path>(
-      nh_, "path",
-      pnh_, topic_path_, 2,
+      nh_, "spline_path",
+      pnh_, "spline_path", 2,
       boost::bind(&TrackerNode::cbPath<nav_msgs::Path>, this, _1));
   sub_path_velocity_ = nh_.subscribe<trajectory_tracker_msgs::PathWithVelocity>(
       "path_velocity", 2,
@@ -221,6 +186,7 @@ TrackerNode::TrackerNode()
       nh_, "cmd_vel",
       pnh_, topic_cmd_vel_, 10);
   pub_status_ = pnh_.advertise<trajectory_tracker_msgs::TrajectoryTrackerStatus>("status", 10, true);
+  pub_status_overwrite = nh_.advertise<std_msgs::String>("status_tracking", 10);
   pub_tracking_ = pnh_.advertise<geometry_msgs::PoseStamped>("tracking", 10, true);
   if (use_odom_)
   {
@@ -513,6 +479,14 @@ void TrackerNode::control(
   status.distance_remains = tracking_result.distance_remains;
   status.angle_remains = tracking_result.angle_remains;
   pub_status_.publish(status);
+
+  std::string remaining_distance = std::to_string(status.distance_remains);
+  std::string remaining_angle = std::to_string(status.angle_remains);
+  std::string send_status = std::to_string(status.status);
+
+  std_msgs::String msg;
+  msg.data =remaining_distance + "," + remaining_angle + "," + send_status;
+  pub_status_overwrite.publish(msg); // Publish the string message containing the float value
 }
 
 TrackerNode::TrackingResult TrackerNode::getTrackingResult(
