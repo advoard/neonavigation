@@ -80,7 +80,7 @@ private:
   double k_avel_rotation_;
   double goal_tolerance_lin_vel_;
   double goal_tolerance_ang_vel_;
-
+  
   ros::Subscriber sub_path_;
   ros::Subscriber sub_path_velocity_;
   ros::Subscriber sub_vel_;
@@ -240,7 +240,7 @@ TrackerNode::~TrackerNode()
   geometry_msgs::Twist cmd_vel;
   cmd_vel.linear.x = 0;
   cmd_vel.angular.z = 0;
-  pub_vel_.publish(cmd_vel);
+  // pub_vel_.publish(cmd_vel);
 }
 
 void TrackerNode::cbSpeed(const std_msgs::Float32::ConstPtr& msg)
@@ -355,7 +355,7 @@ void TrackerNode::cbOdomTimeout(const ros::TimerEvent& event)
   geometry_msgs::Twist cmd_vel;
   cmd_vel.linear.x = 0.0;
   cmd_vel.angular.z = 0.0;
-  pub_vel_.publish(cmd_vel);
+  // pub_vel_.publish(cmd_vel);
 
   trajectory_tracker_msgs::TrajectoryTrackerStatus status;
   status.header.stamp = ros::Time::now();
@@ -399,6 +399,15 @@ void TrackerNode::control(
   switch (tracking_result.status)
   {
     case trajectory_tracker_msgs::TrajectoryTrackerStatus::NO_PATH:
+    {
+      v_lim_.clear();
+      w_lim_.clear();
+      geometry_msgs::Twist cmd_vel;
+      cmd_vel.linear.x = 0;
+      cmd_vel.angular.z = 0;
+      // pub_vel_.publish(cmd_vel);
+      break;
+    }
     case trajectory_tracker_msgs::TrajectoryTrackerStatus::FAR_FROM_PATH:
     {
       v_lim_.clear();
@@ -406,7 +415,17 @@ void TrackerNode::control(
       geometry_msgs::Twist cmd_vel;
       cmd_vel.linear.x = 0;
       cmd_vel.angular.z = 0;
-      pub_vel_.publish(cmd_vel);
+      // pub_vel_.publish(cmd_vel);
+      break;
+    }
+    case trajectory_tracker_msgs::TrajectoryTrackerStatus::GOAL:
+    {
+      v_lim_.clear();
+      w_lim_.clear();
+      geometry_msgs::Twist cmd_vel;
+      cmd_vel.linear.x = 0;
+      cmd_vel.angular.z = 0;
+      // pub_vel_.publish(cmd_vel);
       break;
     }
     default:
@@ -459,7 +478,7 @@ void TrackerNode::control(
             ", v_lim %0.3f, w_lim %0.3f signed_local_distance %0.3f, k_ang %0.3f",
             dist_diff, angle_diff, wvel_diff, v_lim_.get(), w_lim_.get(), tracking_result.signed_local_distance, k_ang);
       }
-      if (std::abs(tracking_result.distance_remains) < stop_tolerance_dist_ &&
+if (std::abs(tracking_result.distance_remains) < stop_tolerance_dist_ &&
           std::abs(tracking_result.angle_remains) < stop_tolerance_ang_ &&
           std::abs(tracking_result.distance_remains_raw) < stop_tolerance_dist_ &&
           std::abs(tracking_result.angle_remains_raw) < stop_tolerance_ang_)
@@ -688,7 +707,7 @@ int main(int argc, char** argv)
 {
   ros::init(argc, argv, "trajectory_tracker");
   trajectory_tracker::TrackerNode track;
-  track.spin();
+    track.spin();  
 
   return 0;
 }
